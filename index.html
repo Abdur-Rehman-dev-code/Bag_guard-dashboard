@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BagGuard | Smart IoT Asset Security</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Agrave+Pro:wght@100..700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Oxygen:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Full-Width Top Header Bar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo-icon">🛡️</span>
+        <div>
+          <h1>BagGuard</h1>
+          <p class="subtitle">Cloud IoT Asset Security</p>
+        </div>
+      </div>
+
+      <div class="bag-selector">
+        <label for="bagIdInput">Bag ID:</label>
+        <input type="text" id="bagIdInput" value="BG-101" placeholder="e.g. BG-101" />
+        <button id="connectBtn" class="btn-secondary">Set</button>
+      </div>
+    </header>
+  <!-- Centered Content Container (Alert Banner + 2 Cards) -->
+    <section id="alertBanner" class="alert-banner hidden">
+      <div class="alert-text">
+        <h2>⚠️ Bag Moving! Is this you?</h2>
+        <p>Sustained motion detected. Verify within 30s or full alarm &amp; GPS lock will engage.</p>
+      </div>
+      <div class="alert-actions">
+        <button id="btnYesMe" class="btn-safe">Yes (It's Me)</button>
+        <button id="btnNotMe" class="btn-danger">No (Stolen!)</button>
+      </div>
+    </section>
+    <!--card1 security lock on off , showing the status of the bag -->
+    <!-- Main 2-Card Layout -->
+    <main class="dashboard-grid">
+      <!-- Card 1: System State, Security Lock Switch & Find My Bag Buzzer Switch -->
+      <div class="card status-card" id="statusCard">
+        <div class="card-headerr">
+          <span class="card-title">SYSTEM STATE</span>
+          <span id="connectionDot" class="conn-badge">● Syncing</span>
+        </div>
+
+        <div class="controls-group">
+          <div class="arm-control">
+            <span>Security System Lock</span>
+            <label class="switch">
+              <input type="checkbox" id="armToggle" />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div id="buzzerControl" class="arm-control buzzer-control hidden">
+            <span>🔔 Find My Bag (Buzzer)</span>
+            <label class="switch">
+              <input type="checkbox" id="buzzerToggle" />
+              <span class="slider slider-orange"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="state-display">
+          <div id="stateBadge" class="state-badge state-disarmed">IDLE (DISARMED)</div>
+          <p id="stateDescription" class="state-desc">Bag is idle. Turn on the lock above to arm.</p>
+          <p id="subStatusText" class="sub-status">Notification status: Standby</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Live GPS Location & Google Maps Button -->
+      <div class="card gps-card">
+        <div class="card-header">
+          <span class="card-title">LIVE GPS LOCATION:</span>
+        </div>
+
+        <div class="gps-coords">
+          <div>
+            <small>LATITUDE:</small>
+            <p id="latText">--.------</p>
+          </div>
+          <div>
+            <small>LONGITUDE:</small>
+            <p id="lngText">--.------</p>
+          </div>
+        </div>
+        <a id="mapsLinkBtn" href="#" target="_blank" rel="noopener" class="btn-maps disabled">
+          📍 TRACK
+        </a>
+      </div>
+    </main>
+
+    <!-- Collapsible Activity Log Drawer (Closed by Default) -->
+    <section class="log-drawer">
+      <div class="log-drawer-header" id="toggleLogBtn">
+        <span class="card-title">📋 RECENT ACTIVITY LOG</span>
+        <div class="log-drawer-actions">
+          <button id="clearLogBtn" class="btn-clear hidden" type="button">Clear</button>
+          <span id="logArrow" class="log-arrow">▼ Show</span>
+        </div>
+      </div>
+
+      <ul id="eventLogList" class="event-log-list hidden">
+        <li class="log-empty">Waiting for system activity...</li>
+      </ul>
+    </section>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+      
