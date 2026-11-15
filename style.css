@@ -358,10 +358,13 @@ input:checked + .slider:before {
 @media (max-width: 768px) {
   html,
   body {
+    position: static !important;
     height: auto !important;
     min-height: 100vh;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: 32px;
   }
 
