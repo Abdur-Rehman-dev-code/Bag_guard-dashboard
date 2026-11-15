@@ -354,60 +354,36 @@ input:checked + .slider:before {
   pointer-events: none;
 }
 
-/* Mobile Layout Fix: Clean Header Stack + Single-Column Vertical Cards */
-@media (max-width: 600px) {
-  /* 1. Target ONLY the top header box (not the whole page wrapper) */
-  header,
-  .header,
-  .top-header {
+/* Clean Mobile View: Stack Bag ID under Logo + Single-Column Cards */
+@media (max-width: 768px) {
+  /* 1. Keep desktop layout untouched; stack header logo & Bag ID vertically on phones */
+  header {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    height: auto !important;
-    width: 100%;
+    gap: 12px;
+    height: auto;
   }
 
-  /* 2. Keep Bag ID row neatly inside the header card below the logo */
-  header > div:has(#bagIdInput),
-  .header > div:has(#bagIdInput),
-  .top-header > div:has(#bagIdInput) {
-    width: 100%;
+  /* 2. Format the Bag ID row neatly below the logo inside the header card */
+  header > div:last-child {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-    margin-top: 10px;
+    width: 100%;
   }
 
   #bagIdInput {
     flex: 1;
-    min-width: 90px;
+    min-width: 0;
   }
 
-  /* 3. Force the main dashboard grid/flex container into 1 vertical column */
-  main,
-  .dashboard,
-  .grid-container,
-  .cards-grid,
-  .container:has(#armToggle) {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    gap: 16px !important;
-  }
-
-  /* 4. Make every card (System State, Live GPS, Activity Log) full-width & non-overlapping */
-  main > section,
-  main > div,
-  .card,
-  .panel,
-  section:has(#toggleLogBtn),
-  div:has(> #toggleLogBtn) {
-    width: 100% !important;
-    max-width: 100% !important;
-    position: relative !important;
-    height: auto !important;
-    margin: 0 !important;
+  /* 3. Keep System State, Live GPS Location, and Activity Log stacked 1 per row */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 /* 11. Dual Toggle Controls (Security Lock + Find My Bag Buzzer) */
