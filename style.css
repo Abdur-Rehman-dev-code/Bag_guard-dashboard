@@ -356,7 +356,7 @@ input:checked + .slider:before {
 .btn-maps.disabled {
   background: dimgray;
   color: var(--text-muted);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* Mobile Layout: Stack Header + Single-Column Cards + Vertical Scroll */
