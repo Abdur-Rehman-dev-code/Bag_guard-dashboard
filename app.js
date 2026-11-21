@@ -1,3 +1,4 @@
+
 // Import Firebase App & Realtime Database from Google CDN
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -22,6 +23,7 @@ const firebaseConfig = {
 // Initialize Firebase (Only Once!)
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+// --- COMMAND-SYNC GUARD STATE ---
 const bagIdInput = document.getElementById("bagIdInput");
 const connectBtn = document.getElementById("connectBtn");
 const connectionDot = document.getElementById("connectionDot");
@@ -51,11 +53,10 @@ const eventLogList = document.getElementById("eventLogList");
 // STAGE 3: REMEMBERING THE BAG ID & SETTING UP TRACKING VARIABLES
 // =========================================================================
 
-// Check browser storage for a previously saved Bag ID; if none exists, default to "BG-101"
 // Start blank so the HTML placeholder shows until the user types a Bag ID
-let currentBagId = "";
-bagIdInput.value = "";
-
+// Load previously typed Bag ID if saved; otherwise stay blank so placeholder shows
+let currentBagId = localStorage.getItem("bagguard_bag_id") || "";
+bagIdInput.value = currentBagId;
 // Holds the active Firebase folder path (e.g., "bags/BG-101") so we can disconnect it if the user changes bags
 let activeBagRef = null;
 
@@ -66,6 +67,7 @@ let lastKnownState = null;
 let lastCommandTime = 0;
 let pendingState = null;
 const COMMAND_GUARD_MS = 3000;
+
 
 // =========================================================================
 // STAGE 4: ADDING TIMESTAMPED ENTRIES TO THE ACTIVITY LOG
@@ -159,33 +161,15 @@ function renderState(state, findBuzzer = false) {
     buzzerControl.classList.remove("hidden");
     buzzerToggle.checked = true;
 
-    // Keep <section id="alertBanner"> visible on screen so user can disarm if recovered
-    alertBanner.classList.remove("hidden");
+    // Hide the 2FA verification banner once theft is confirmed
+    alertBanner.classList.add("hidden");
 
     // Style <div id="stateBadge"> red (.state-stolen)
     stateBadge.classList.add("state-stolen");
     stateBadge.textContent = "🚨 BAG STOLEN";
     stateDescription.textContent = "Theft confirmed! Alarm locked ON & GPS tracking live.";
     subStatusText.textContent = "Notification status: Emergency Theft Mode";
-
-  } else {
-    // DEFAULT / DISARMED STATE:
-    // Turn HTML <input id="armToggle"> OFF
-    armToggle.checked = false;
-
-    // Hide the Find My Bag box <div id="buzzerControl"> completely while the system is off
-    buzzerControl.classList.add("hidden");
-
-    // Reset the buzzer slider <input id="buzzerToggle"> to OFF
-    buzzerToggle.checked = false;
-
-    // Style <div id="stateBadge"> gray (.state-disarmed) and show idle messages
-    stateBadge.classList.add("state-disarmed");
-    stateBadge.textContent = "IDLE (DISARMED)";
-    stateDescription.textContent = "Bag is idle. Turn on the lock above to arm.";
-    subStatusText.textContent = "Notification status: Standby";
-  }
-}
+}}
 
 
 // =========================================================================
@@ -201,6 +185,8 @@ function connectToBag(bagId) {
   if (!currentBagId) return;
 
   bagIdInput.value = currentBagId;
+  localStorage.setItem("bagguard_bag_id", currentBagId);
+
   // Show an orange "Syncing..." indicator in HTML <span id="connectionDot"> while connecting
   connectionDot.textContent = "● Syncing...";
   connectionDot.style.color = "orange";
@@ -218,7 +204,7 @@ function connectToBag(bagId) {
     // Read the JSON object stored at "bags/BG-101" (if empty in Firebase, use an empty object {})
     const data = snapshot.val() || {};
 
-    // Extract "state" (default "DISARMED") and "findBuzzer" (default false) from Firebase
+   // Extract "state" (default "DISARMED") and "findBuzzer" (default false) from Firebase
     let state = data.state || "DISARMED";
     const findBuzzer = Boolean(data.findBuzzer);
 
@@ -274,11 +260,12 @@ function connectToBag(bagId) {
       mapsLinkBtn.href = "#";
       mapsLinkBtn.classList.add("disabled");
       mapsLinkBtn.setAttribute("disabled", "true");
-      mapsLinkBtn.style.pointerEvents = "none";
-    }
+     mapsLinkBtn.style.pointerEvents = "none";
+  }
   });
 }
 
+  
 
 // =========================================================================
 // STAGE 7: HANDLING USER CLICKS & TOGGLE SWITCHES
@@ -375,4 +362,7 @@ clearLogBtn.addEventListener("click", () => {
 // =========================================================================
 
 // Automatically connect to the saved Bag ID ("BG-101") as soon as the browser finishes reading app.js
-//connectToBag(currentBagId);
+// Auto-connect only if the user has already saved a Bag ID previously
+if (currentBagId) {
+  connectToBag(currentBagId);
+}
