@@ -52,10 +52,9 @@ const eventLogList = document.getElementById("eventLogList");
 // =========================================================================
 
 // Check browser storage for a previously saved Bag ID; if none exists, default to "BG-101"
-let currentBagId = localStorage.getItem("bagguard_bag_id") || "BG-101";
-
-// Put that saved Bag ID straight into HTML <input id="bagIdInput"> in the top header
-bagIdInput.value = currentBagId;
+// Start blank so the HTML placeholder shows until the user types a Bag ID
+let currentBagId = "";
+bagIdInput.value = "";
 
 // Holds the active Firebase folder path (e.g., "bags/BG-101") so we can disconnect it if the user changes bags
 let activeBagRef = null;
@@ -63,6 +62,10 @@ let activeBagRef = null;
 // Remembers the previous state (e.g., "ARMED") so we don't print duplicate log entries on every GPS update
 let lastKnownState = null;
 
+// --- COMMAND-SYNC GUARD (Prevents stale ESP32 packets from undoing button clicks) ---
+let lastCommandTime = 0;
+let pendingState = null;
+const COMMAND_GUARD_MS = 3000;
 
 // =========================================================================
 // STAGE 4: ADDING TIMESTAMPED ENTRIES TO THE ACTIVITY LOG
@@ -193,13 +196,11 @@ function connectToBag(bagId) {
   // If we were already listening to a previous bag in Firebase, detach that old listener first
   if (activeBagRef) off(activeBagRef);
 
-  // Clean up spaces, convert letters to UPPERCASE (e.g., "bg-101" -> "BG-101"), or fallback to "BG-101"
-  currentBagId = bagId.trim().toUpperCase() || "BG-101";
+ // Clean up spaces and convert letters to UPPERCASE; stop if box is empty
+  currentBagId = bagId.trim().toUpperCase();
+  if (!currentBagId) return;
 
-  // Put the cleaned Bag ID back into HTML <input id="bagIdInput"> and save it in browser storage
   bagIdInput.value = currentBagId;
-  localStorage.setItem("bagguard_bag_id", currentBagId);
-
   // Show an orange "Syncing..." indicator in HTML <span id="connectionDot"> while connecting
   connectionDot.textContent = "● Syncing...";
   connectionDot.style.color = "orange";
@@ -218,48 +219,62 @@ function connectToBag(bagId) {
     const data = snapshot.val() || {};
 
     // Extract "state" (default "DISARMED") and "findBuzzer" (default false) from Firebase
-    const state = data.state|| "DISARMED";
+    let state = data.state || "DISARMED";
     const findBuzzer = Boolean(data.findBuzzer);
 
-    // Pass those values to Stage 5 to update all switches, badges, and banners on screen
+    // --- COMMAND-SYNC GUARD CHECK ---
+    const timeSinceClick = Date.now() - lastCommandTime;
+    if (pendingState && timeSinceClick < COMMAND_GUARD_MS) {
+      if (state !== pendingState) {
+        state = pendingState; // Keep our newly clicked button state on screen
+      } else {
+        pendingState = null;  // ESP32 caught up and confirmed; release guard early
+      }
+    } else {
+      pendingState = null;
+    }
+
+    // Pass guarded state to Stage 5 to update all switches, badges, and banners on screen
     renderState(state, findBuzzer);
 
     // Only write a new entry to <ul id="eventLogList"> if the security state actually changed
     if (state !== lastKnownState) {
-      if (state === "ARMING") addLog("Security lock turned ON — Arming started.", "info");
+      if (state === "ARMING") addLog("Security lock turned ON - Arming started.", "info");
       if (state === "ARMED") addLog("System is now ARMED & protected.", "safe");
       if (state === "ALERT") addLog("⚠️ Motion detected! 2FA alert triggered.", "alert");
       if (state === "STOLEN") addLog("🚨 Theft confirmed! Alarm & live GPS active.", "danger");
       if (state === "DISARMED" && lastKnownState !== null) {
         addLog("System DISARMED (Idle).", "safe");
       }
-      // Update lastKnownState so this exact state isn't logged twice
       lastKnownState = state;
     }
 
-    // Read NEO-6M GPS coordinates ("lat" and "lng") from Firebase and convert them to numbers
+    // Read GPS / lab fallback coordinates ("lat" and "lng") from Firebase
     const lat = Number(data.lat);
     const lng = Number(data.lng);
+    const hasValidCoords = Math.abs(lat) > 0.001 && Math.abs(lng) > 0.001;
+    const isSystemActive = state !== "DISARMED";
 
-    // If valid non-zero GPS coordinates exist in Firebase:
-    if (lat && lng && (lat !== 0 || lng !== 0)) {
-      // Display coordinates rounded to 6 decimal places in HTML <p id="latText"> and <p id="lngText">
+    // Show coordinates & unlock Google Maps button ONLY when system is active and coords exist
+    if (isSystemActive && hasValidCoords) {
       latText.textContent = lat.toFixed(6);
       lngText.textContent = lng.toFixed(6);
+      gpsStatusText.textContent = "Location tracking active.";
 
-      // Update the GPS helper text in HTML <p id="gpsStatusText">
-      gpsStatusText.textContent = "Live NEO-6M GPS coordinates received.";
-
-      // Set the Google Maps destination link on HTML <a id="mapsLinkBtn"> and unlock the blue button
       mapsLinkBtn.href = `https://www.google.com/maps?q=${lat},${lng}`;
+      mapsLinkBtn.target = "_blank";
       mapsLinkBtn.classList.remove("disabled");
+      mapsLinkBtn.removeAttribute("disabled");
+      mapsLinkBtn.style.pointerEvents = "auto";
     } else {
-      // If no GPS fix exists yet, show dashes and keep HTML <a id="mapsLinkBtn"> grayed out (.disabled)
+      // When DISARMED (Idle) or no coordinates -> clear display & disable Track button
       latText.textContent = "--.------";
       lngText.textContent = "--.------";
-      gpsStatusText.textContent = "GPS activates automatically if theft is confirmed.";
+      gpsStatusText.textContent = "System idle. Arm bag to enable location tracking.";
       mapsLinkBtn.href = "#";
       mapsLinkBtn.classList.add("disabled");
+      mapsLinkBtn.setAttribute("disabled", "true");
+      mapsLinkBtn.style.pointerEvents = "none";
     }
   });
 }
@@ -271,56 +286,66 @@ function connectToBag(bagId) {
 
 // When the user clicks the "Set" button <button id="connectBtn"> in the header:
 connectBtn.addEventListener("click", () => {
-  // Connect Firebase to whatever Bag ID is typed inside <input id="bagIdInput">
-  connectToBag(bagIdInput.value);
+  const typedId = bagIdInput.value.trim();
+  if (!typedId) {
+    alert("Please enter a Bag ID first.");
+    return;
+  }
+  connectToBag(typedId);
   addLog(`Switched active device to ${currentBagId}.`, "info");
 });
 
 // When the user flips the main Security System Lock switch <input id="armToggle">:
 armToggle.addEventListener("change", () => {
-  if (!activeBagRef) return;
+  if (!activeBagRef) {
+    armToggle.checked = false;
+    alert("Enter a Bag ID and click Set first.");
+    return;
+  }
+
+  const targetState = armToggle.checked ? "ARMING" : "DISARMED";
+  lastCommandTime = Date.now();
+  pendingState = targetState;
+  renderState(targetState, false);
 
   if (armToggle.checked) {
-    // Switched ON: Tell Firebase to set "state" to "ARMING" (ESP32 will read this and start countdown)
     update(activeBagRef, { state: "ARMING" });
   } else {
-    // Switched OFF: Tell Firebase to disarm the bag AND shut off the Find My Bag buzzer together
     update(activeBagRef, { state: "DISARMED", findBuzzer: false });
   }
 });
 
 // When the user flips the Find My Bag buzzer switch <input id="buzzerToggle">:
 buzzerToggle.addEventListener("change", () => {
-  // Safety guard: if the main Security Lock is OFF, force the buzzer switch OFF and do nothing
   if (!activeBagRef || !armToggle.checked) {
     buzzerToggle.checked = false;
     return;
   }
-
-  // Read whether the slider is now true (ON) or false (OFF)
   const isRinging = buzzerToggle.checked;
-
-  // Send "findBuzzer: true/false" to Firebase so the ESP32 turns the physical buzzer ON or OFF
   update(activeBagRef, { findBuzzer: isRinging });
-
-  // Record the action in the Recent Activity Log
   addLog(isRinging ? "🔔 Find My Bag buzzer turned ON." : "🔕 Find My Bag buzzer turned OFF.", "alert");
 });
 
 // When the user clicks "Yes (It's Me)" <button id="btnYesMe"> on the orange 2FA alert banner:
 btnYesMe.addEventListener("click", () => {
   if (!activeBagRef) return;
-  // Cancel the alarm in Firebase by setting state back to "DISARMED" and turning off the buzzer
+  lastCommandTime = Date.now();
+  pendingState = "DISARMED";
+  renderState("DISARMED", false);
+
   update(activeBagRef, { state: "DISARMED", findBuzzer: false });
-  addLog("Owner verified ('Yes, It's Me') — System disarmed.", "safe");
+  addLog("Owner verified ('Yes, It's Me') - System disarmed.", "safe");
 });
 
 // When the user clicks "No (Stolen!)" <button id="btnNotMe"> on the orange 2FA alert banner:
 btnNotMe.addEventListener("click", () => {
   if (!activeBagRef) return;
-  // Escalate Firebase to "STOLEN" mode and lock "findBuzzer: true" so the alarm sounds continuously
+  lastCommandTime = Date.now();
+  pendingState = "STOLEN";
+  renderState("STOLEN", true);
+
   update(activeBagRef, { state: "STOLEN", findBuzzer: true });
-  addLog("Owner reported theft ('No, Stolen!') — Emergency alarm locked ON.", "danger");
+  addLog("Owner reported theft ('No, Stolen!') - Emergency alarm locked ON.", "danger");
 });
 
 // When the user clicks the collapsible Recent Activity Log bar <div id="toggleLogBtn">:
@@ -350,4 +375,4 @@ clearLogBtn.addEventListener("click", () => {
 // =========================================================================
 
 // Automatically connect to the saved Bag ID ("BG-101") as soon as the browser finishes reading app.js
-connectToBag(currentBagId);
+//connectToBag(currentBagId);
