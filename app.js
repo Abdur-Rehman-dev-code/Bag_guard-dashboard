@@ -66,7 +66,7 @@ let lastKnownState = null;
 // --- COMMAND-SYNC GUARD (Prevents stale ESP32 packets from undoing button clicks) ---
 let lastCommandTime = 0;
 let pendingState = null;
-const COMMAND_GUARD_MS = 3000;
+const COMMAND_GUARD_MS = 5000;
 
 
 // =========================================================================
@@ -159,7 +159,7 @@ function renderState(state, findBuzzer = false) {
     // Lock Security Switch ON, keep <div id="buzzerControl"> visible, and force the buzzer slider ON
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
-    buzzerToggle.checked = true;
+    buzzerToggle.checked = Boolean(findBuzzer); 
 
     // Hide the 2FA verification banner once theft is confirmed
     alertBanner.classList.add("hidden");
@@ -243,25 +243,40 @@ function connectToBag(bagId) {
 
     // Show coordinates & unlock Google Maps button ONLY when system is active and coords exist
     if (isSystemActive && hasValidCoords) {
+      const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
       latText.textContent = lat.toFixed(6);
       lngText.textContent = lng.toFixed(6);
       gpsStatusText.textContent = "Location tracking active.";
 
-      mapsLinkBtn.href = `https://www.google.com/maps?q=${lat},${lng}`;
+      // Force-enable Track button whether it is an <a> link or a <button>
+      mapsLinkBtn.href = mapsUrl;
       mapsLinkBtn.target = "_blank";
-      mapsLinkBtn.classList.remove("disabled");
+      mapsLinkBtn.disabled = false;
       mapsLinkBtn.removeAttribute("disabled");
+      mapsLinkBtn.removeAttribute("aria-disabled");
+      mapsLinkBtn.classList.remove("disabled", "btn-disabled");
       mapsLinkBtn.style.pointerEvents = "auto";
+      mapsLinkBtn.style.opacity = "1";
+      mapsLinkBtn.style.cursor = "pointer";
+      mapsLinkBtn.onclick = (e) => {
+        e.preventDefault();
+        window.open(mapsUrl, "_blank");
+      };
     } else {
       // When DISARMED (Idle) or no coordinates -> clear display & disable Track button
       latText.textContent = "--.------";
       lngText.textContent = "--.------";
       gpsStatusText.textContent = "System idle. Arm bag to enable location tracking.";
+
       mapsLinkBtn.href = "#";
-      mapsLinkBtn.classList.add("disabled");
+      mapsLinkBtn.disabled = true;
       mapsLinkBtn.setAttribute("disabled", "true");
-     mapsLinkBtn.style.pointerEvents = "none";
-  }
+      mapsLinkBtn.classList.add("disabled");
+      mapsLinkBtn.style.pointerEvents = "none";
+      mapsLinkBtn.style.opacity = "0.5";
+      mapsLinkBtn.style.cursor = "not-allowed";
+      mapsLinkBtn.onclick = null;
+    }
   });
 }
 
@@ -298,6 +313,13 @@ armToggle.addEventListener("change", () => {
   if (armToggle.checked) {
     update(activeBagRef, { state: "ARMING" });
   } else {
+    // Immediately disarm, turn off Find My Bag buzzer, and reset UI without needing page refresh
+    lastCommandTime = Date.now();
+    pendingState = "DISARMED";
+    buzzerToggle.checked = false;
+    buzzerControl.classList.add("hidden");
+    renderState("DISARMED", false);
+
     update(activeBagRef, { state: "DISARMED", findBuzzer: false });
   }
 });
@@ -329,9 +351,9 @@ btnNotMe.addEventListener("click", () => {
   if (!activeBagRef) return;
   lastCommandTime = Date.now();
   pendingState = "STOLEN";
-  renderState("STOLEN", true);
+  renderState("STOLEN", buzzerToggle.checked);
 
-  update(activeBagRef, { state: "STOLEN", findBuzzer: true });
+  update(activeBagRef, { state: "STOLEN" });
   addLog("Owner reported theft ('No, Stolen!') - Emergency alarm locked ON.", "danger");
 });
 
