@@ -1,5 +1,4 @@
 
-
 // Import Firebase App & Realtime Database from Google CDN
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -306,20 +305,19 @@ armToggle.addEventListener("change", () => {
     return;
   }
 
-  const targetState = armToggle.checked ? "ARMING" : "DISARMED";
-  lastCommandTime = Date.now();
-  pendingState = targetState;
-  renderState(targetState, false);
-
   if (armToggle.checked) {
+    lastCommandTime = Date.now();
+    pendingState = "ARMING";
+    renderState("ARMING", false);
     update(activeBagRef, { state: "ARMING" });
   } else {
-    // Immediately disarm, turn off Find My Bag buzzer, and reset UI without needing page refresh
     lastCommandTime = Date.now();
     pendingState = "DISARMED";
+    lastKnownState = "DISARMED";
     buzzerToggle.checked = false;
     buzzerControl.classList.add("hidden");
     renderState("DISARMED", false);
+    addLog("System DISARMED (Idle) - Bag recovered.", "safe");
 
     update(activeBagRef, { state: "DISARMED", findBuzzer: false });
   }
