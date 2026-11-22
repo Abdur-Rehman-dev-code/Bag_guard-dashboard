@@ -198,7 +198,7 @@ function updateTrackButton(state, lat = 24.8607, lng = 67.0011) {
     const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
     latText.textContent = lat.toFixed(6);
     lngText.textContent = lng.toFixed(6);
-    gpsStatusText.textContent = "Theft confirmed! Live location tracking active.";
+    if (gpsStatusText) gpsStatusText.textContent = "Theft confirmed! Live location tracking active.";
 
     mapsLinkBtn.setAttribute("href", mapsUrl);
     mapsLinkBtn.setAttribute("target", "_blank");
@@ -206,13 +206,13 @@ function updateTrackButton(state, lat = 24.8607, lng = 67.0011) {
     mapsLinkBtn.removeAttribute("disabled");
     mapsLinkBtn.removeAttribute("aria-disabled");
     mapsLinkBtn.classList.remove("disabled", "btn-disabled", "locked");
+    mapsLinkBtn.classList.add("track-unlocked");
 
-    // Force-override any gray CSS styling
     mapsLinkBtn.style.setProperty("pointer-events", "auto", "important");
     mapsLinkBtn.style.setProperty("opacity", "1", "important");
     mapsLinkBtn.style.setProperty("filter", "none", "important");
     mapsLinkBtn.style.setProperty("cursor", "pointer", "important");
-    mapsLinkBtn.style.setProperty("background-color", "#ef4444", "important");
+    mapsLinkBtn.style.setProperty("background", "#ef4444", "important");
     mapsLinkBtn.style.setProperty("color", "#ffffff", "important");
 
     mapsLinkBtn.onclick = (e) => {
@@ -222,20 +222,24 @@ function updateTrackButton(state, lat = 24.8607, lng = 67.0011) {
   } else {
     latText.textContent = "--.------";
     lngText.textContent = "--.------";
-    gpsStatusText.textContent =
-      state === "DISARMED"
-        ? "System idle. Coordinates hidden."
-        : "Armed & monitoring. Coordinates reveal only if stolen.";
+    if (gpsStatusText) {
+      gpsStatusText.textContent =
+        state === "DISARMED"
+          ? "System idle. Coordinates hidden."
+          : "Armed & monitoring. Coordinates reveal only if stolen.";
+    }
 
     mapsLinkBtn.removeAttribute("href");
     mapsLinkBtn.removeAttribute("target");
     mapsLinkBtn.disabled = true;
     mapsLinkBtn.setAttribute("disabled", "true");
+    mapsLinkBtn.classList.remove("track-unlocked");
     mapsLinkBtn.classList.add("disabled");
 
     mapsLinkBtn.style.setProperty("pointer-events", "none", "important");
     mapsLinkBtn.style.setProperty("opacity", "0.5", "important");
     mapsLinkBtn.style.setProperty("cursor", "not-allowed", "important");
+    mapsLinkBtn.style.removeProperty("background");
     mapsLinkBtn.style.removeProperty("background-color");
     mapsLinkBtn.style.removeProperty("color");
 
