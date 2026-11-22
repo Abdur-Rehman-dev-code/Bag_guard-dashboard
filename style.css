@@ -525,3 +525,13 @@ input:checked + .slider-orange {
   border-left-color: dimgray !important;
   color: var(--text-muted);
 }
+#mapsLinkBtn.track-unlocked {
+  background: #ef4444 !important;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  filter: none !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45) !important;
+}
