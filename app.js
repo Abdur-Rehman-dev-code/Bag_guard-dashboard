@@ -49,6 +49,17 @@ const toggleLogBtn = document.getElementById("toggleLogBtn");
 const logArrow = document.getElementById("logArrow");
 const clearLogBtn = document.getElementById("clearLogBtn");
 const eventLogList = document.getElementById("eventLogList");
+
+if (mapsLinkBtn) {
+  mapsLinkBtn.removeAttribute("href");
+  mapsLinkBtn.removeAttribute("target");
+  mapsLinkBtn.style.opacity = "0.5";
+  mapsLinkBtn.style.cursor = "not-allowed";
+  mapsLinkBtn.onclick = (e) => {
+    e.preventDefault();
+    return false;
+  };
+}
 // =========================================================================
 // STAGE 3: REMEMBERING THE BAG ID & SETTING UP TRACKING VARIABLES
 // =========================================================================
@@ -104,73 +115,82 @@ function addLog(message, type = "info") {
 // =========================================================================
 // STAGE 5: UPDATING THE VISUAL DASHBOARD BASED ON BAG STATE
 // =========================================================================
-
+function setStatusTexts(badgeText, descText, subText) {
+  if (stateBadge) stateBadge.textContent = badgeText;
+  if (stateDescription) stateDescription.textContent = descText;
+  if (subStatusText) subStatusText.textContent = subText;
+}
 function renderState(state, findBuzzer = false) {
   // Reset HTML <div id="stateBadge"> back to its base class before adding a state color class
-  stateBadge.className = "state-badge";
+  if (stateBadge) stateBadge.className = "state-badge";
 
-  // Hide the top orange 2FA alert banner <section id="alertBanner"> by default (only shown in ALERT/STOLEN)
-  alertBanner.classList.add("hidden");
+  // Hide the top orange 2FA alert banner <section id="alertBanner"> by default (only shown in ALERT)
+  if (alertBanner) alertBanner.classList.add("hidden");
 
   if (state === "ARMING") {
-    // Keep HTML <input id="armToggle"> switched ON (green)
     armToggle.checked = true;
-
-    // Reveal the Find My Bag box <div id="buzzerControl"> right underneath the lock switch
     buzzerControl.classList.remove("hidden");
-
-    // Match the Find My Bag slider <input id="buzzerToggle"> to Firebase's true/false value
     buzzerToggle.checked = Boolean(findBuzzer);
 
-    // Style <div id="stateBadge"> blue (.state-arming) and update the status text elements in Card 1
-    stateBadge.classList.add("state-arming");
-    stateBadge.textContent = "ARMING (10s)";
-    stateDescription.textContent = "Arming in progress... Close and secure your bag.";
-    subStatusText.textContent = "Notification status: Arming countdown active";
+    if (stateBadge) stateBadge.classList.add("state-arming");
+    setStatusTexts(
+      "ARMING (10s)",
+      "Arming in progress... Close and secure your bag.",
+      "Notification status: Arming countdown active"
+    );
 
   } else if (state === "ARMED") {
-    // Keep Security Lock ON and keep <div id="buzzerControl"> visible so the user can ping the bag anytime
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
     buzzerToggle.checked = Boolean(findBuzzer);
 
-    // Style <div id="stateBadge"> green (.state-armed) and update Card 1 descriptions
-    stateBadge.classList.add("state-armed");
-    stateBadge.textContent = "ARMED & PROTECTED";
-    stateDescription.textContent = "Motion sensors active. Watching for movement.";
-    subStatusText.textContent = "Notification status: Armed & monitoring";
+    if (stateBadge) stateBadge.classList.add("state-armed");
+    setStatusTexts(
+      "ARMED & PROTECTED",
+      "Motion sensors active. Watching for movement.",
+      "Notification status: Armed & monitoring"
+    );
 
   } else if (state === "ALERT") {
-    // Keep Security Lock ON and Find My Bag visible
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
     buzzerToggle.checked = Boolean(findBuzzer);
+    if (alertBanner) alertBanner.classList.remove("hidden");
 
-    // Pop open the orange 2FA warning banner <section id="alertBanner"> ("Bag Moving! Is this you?")
-    alertBanner.classList.remove("hidden");
-
-    // Style <div id="stateBadge"> orange (.state-alert)
-    stateBadge.classList.add("state-alert");
-    stateBadge.textContent = "⚠️ MOTION ALERT";
-    stateDescription.textContent = "Movement detected! Confirm identity above.";
-    subStatusText.textContent = "Notification status: 2FA Verification Sent";
+    if (stateBadge) stateBadge.classList.add("state-alert");
+    setStatusTexts(
+      "⚠️ MOTION ALERT",
+      "Movement detected! Confirm identity above.",
+      "Notification status: 2FA Verification Sent"
+    );
 
   } else if (state === "STOLEN") {
-    // Lock Security Switch ON, keep <div id="buzzerControl"> visible, and force the buzzer slider ON
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
-    buzzerToggle.checked = Boolean(findBuzzer); 
+    buzzerToggle.checked = Boolean(findBuzzer);
+    if (alertBanner) alertBanner.classList.add("hidden");
 
-    // Hide the 2FA verification banner once theft is confirmed
-    alertBanner.classList.add("hidden");
+    if (stateBadge) stateBadge.classList.add("state-stolen");
+    setStatusTexts(
+      "🚨 BAG STOLEN",
+      "Theft confirmed! Alarm locked ON & GPS tracking live.",
+      "Notification status: Emergency Theft Mode"
+    );
 
-    // Style <div id="stateBadge"> red (.state-stolen)
-    stateBadge.classList.add("state-stolen");
-    stateBadge.textContent = "🚨 BAG STOLEN";
-    stateDescription.textContent = "Theft confirmed! Alarm locked ON & GPS tracking live.";
-    subStatusText.textContent = "Notification status: Emergency Theft Mode";
-}}
+  } else {
+    // DEFAULT / DISARMED (IDLE) STATE:
+    armToggle.checked = false;
+    buzzerControl.classList.add("hidden");
+    buzzerToggle.checked = false;
 
+    if (stateBadge) stateBadge.classList.add("state-disarmed");
+    setStatusTexts(
+      "IDLE (DISARMED)",
+      "Bag is idle. Turn on the lock above to arm.",
+      "Notification status: Standby"
+    );
+  }
+}
 
 // =========================================================================
 // STAGE 6: LIVE TWO-WAY SYNC WITH FIREBASE REALTIME DATABASE
@@ -209,12 +229,15 @@ function connectToBag(bagId) {
     const findBuzzer = Boolean(data.findBuzzer);
 
     // --- COMMAND-SYNC GUARD CHECK ---
-    const timeSinceClick = Date.now() - lastCommandTime;
+   const timeSinceClick = Date.now() - lastCommandTime;
     if (pendingState && timeSinceClick < COMMAND_GUARD_MS) {
-      if (state !== pendingState) {
-        state = pendingState; // Keep our newly clicked button state on screen
+      // Allow ESP32 to advance ARMING -> ARMED immediately
+      if (pendingState === "ARMING" && state === "ARMED") {
+        pendingState = null;
+      } else if (state !== pendingState) {
+        state = pendingState; // Keep our newly clicked state (e.g., DISARMED) on screen
       } else {
-        pendingState = null;  // ESP32 caught up and confirmed; release guard early
+        pendingState = null;  // ESP32 confirmed the change; release guard early
       }
     } else {
       pendingState = null;
@@ -235,20 +258,22 @@ function connectToBag(bagId) {
       lastKnownState = state;
     }
 
-    // Read GPS / lab fallback coordinates ("lat" and "lng") from Firebase
-    const lat = Number(data.lat);
-    const lng = Number(data.lng);
-    const hasValidCoords = Math.abs(lat) > 0.001 && Math.abs(lng) > 0.001;
-    const isSystemActive = state !== "DISARMED";
+    // Use live NEO-6M coordinates if valid; otherwise use fallback coordinates
+    const rawLat = Number(data.lat);
+    const rawLng = Number(data.lng);
+    const hasLiveGPS = Math.abs(rawLat) > 0.001 && Math.abs(rawLng) > 0.001;
 
-    // Show coordinates & unlock Google Maps button ONLY when system is active and coords exist
-    if (isSystemActive && hasValidCoords) {
+    const lat = hasLiveGPS ? rawLat : 24.8607;
+    const lng = hasLiveGPS ? rawLng : 67.0011;
+    const isBagStolen = state === "STOLEN";
+
+    // Show coordinates & unlock Google Maps button ONLY when state is "STOLEN"
+    if (isBagStolen) {
       const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
       latText.textContent = lat.toFixed(6);
       lngText.textContent = lng.toFixed(6);
-      gpsStatusText.textContent = "Location tracking active.";
+      gpsStatusText.textContent = "Theft confirmed! Live location tracking active.";
 
-      // Force-enable Track button whether it is an <a> link or a <button>
       mapsLinkBtn.href = mapsUrl;
       mapsLinkBtn.target = "_blank";
       mapsLinkBtn.disabled = false;
@@ -260,22 +285,30 @@ function connectToBag(bagId) {
       mapsLinkBtn.style.cursor = "pointer";
       mapsLinkBtn.onclick = (e) => {
         e.preventDefault();
-        window.open(mapsUrl, "_blank");
+        window.open(mapsUrl, "_blank", "noopener");
       };
     } else {
-      // When DISARMED (Idle) or no coordinates -> clear display & disable Track button
+      // Hide coordinates & completely block Track button clicks during DISARMED, ARMING, ARMED, and ALERT
       latText.textContent = "--.------";
       lngText.textContent = "--.------";
-      gpsStatusText.textContent = "System idle. Arm bag to enable location tracking.";
+      gpsStatusText.textContent =
+        state === "DISARMED"
+          ? "System idle. Coordinates hidden."
+          : "Armed & monitoring. Coordinates reveal only if stolen.";
 
-      mapsLinkBtn.href = "#";
+      mapsLinkBtn.removeAttribute("href");
+      mapsLinkBtn.removeAttribute("target");
       mapsLinkBtn.disabled = true;
       mapsLinkBtn.setAttribute("disabled", "true");
       mapsLinkBtn.classList.add("disabled");
       mapsLinkBtn.style.pointerEvents = "none";
       mapsLinkBtn.style.opacity = "0.5";
       mapsLinkBtn.style.cursor = "not-allowed";
-      mapsLinkBtn.onclick = null;
+      mapsLinkBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      };
     }
   });
 }
