@@ -191,6 +191,61 @@ function renderState(state, findBuzzer = false) {
     );
   }
 }
+function updateTrackButton(state, lat = 24.8607, lng = 67.0011) {
+  if (!mapsLinkBtn) return;
+
+  if (state === "STOLEN") {
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+    latText.textContent = lat.toFixed(6);
+    lngText.textContent = lng.toFixed(6);
+    gpsStatusText.textContent = "Theft confirmed! Live location tracking active.";
+
+    mapsLinkBtn.setAttribute("href", mapsUrl);
+    mapsLinkBtn.setAttribute("target", "_blank");
+    mapsLinkBtn.disabled = false;
+    mapsLinkBtn.removeAttribute("disabled");
+    mapsLinkBtn.removeAttribute("aria-disabled");
+    mapsLinkBtn.classList.remove("disabled", "btn-disabled", "locked");
+
+    // Force-override any gray CSS styling
+    mapsLinkBtn.style.setProperty("pointer-events", "auto", "important");
+    mapsLinkBtn.style.setProperty("opacity", "1", "important");
+    mapsLinkBtn.style.setProperty("filter", "none", "important");
+    mapsLinkBtn.style.setProperty("cursor", "pointer", "important");
+    mapsLinkBtn.style.setProperty("background-color", "#ef4444", "important");
+    mapsLinkBtn.style.setProperty("color", "#ffffff", "important");
+
+    mapsLinkBtn.onclick = (e) => {
+      e.preventDefault();
+      window.open(mapsUrl, "_blank", "noopener");
+    };
+  } else {
+    latText.textContent = "--.------";
+    lngText.textContent = "--.------";
+    gpsStatusText.textContent =
+      state === "DISARMED"
+        ? "System idle. Coordinates hidden."
+        : "Armed & monitoring. Coordinates reveal only if stolen.";
+
+    mapsLinkBtn.removeAttribute("href");
+    mapsLinkBtn.removeAttribute("target");
+    mapsLinkBtn.disabled = true;
+    mapsLinkBtn.setAttribute("disabled", "true");
+    mapsLinkBtn.classList.add("disabled");
+
+    mapsLinkBtn.style.setProperty("pointer-events", "none", "important");
+    mapsLinkBtn.style.setProperty("opacity", "0.5", "important");
+    mapsLinkBtn.style.setProperty("cursor", "not-allowed", "important");
+    mapsLinkBtn.style.removeProperty("background-color");
+    mapsLinkBtn.style.removeProperty("color");
+
+    mapsLinkBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    };
+  }
+}
 
 // =========================================================================
 // STAGE 6: LIVE TWO-WAY SYNC WITH FIREBASE REALTIME DATABASE
@@ -265,51 +320,10 @@ function connectToBag(bagId) {
 
     const lat = hasLiveGPS ? rawLat : 24.8607;
     const lng = hasLiveGPS ? rawLng : 67.0011;
-    const isBagStolen = state === "STOLEN";
 
-    // Show coordinates & unlock Google Maps button ONLY when state is "STOLEN"
-    if (isBagStolen) {
-      const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-      latText.textContent = lat.toFixed(6);
-      lngText.textContent = lng.toFixed(6);
-      gpsStatusText.textContent = "Theft confirmed! Live location tracking active.";
+    updateTrackButton(state, lat, lng);
 
-      mapsLinkBtn.href = mapsUrl;
-      mapsLinkBtn.target = "_blank";
-      mapsLinkBtn.disabled = false;
-      mapsLinkBtn.removeAttribute("disabled");
-      mapsLinkBtn.removeAttribute("aria-disabled");
-      mapsLinkBtn.classList.remove("disabled", "btn-disabled");
-      mapsLinkBtn.style.pointerEvents = "auto";
-      mapsLinkBtn.style.opacity = "1";
-      mapsLinkBtn.style.cursor = "pointer";
-      mapsLinkBtn.onclick = (e) => {
-        e.preventDefault();
-        window.open(mapsUrl, "_blank", "noopener");
-      };
-    } else {
-      // Hide coordinates & completely block Track button clicks during DISARMED, ARMING, ARMED, and ALERT
-      latText.textContent = "--.------";
-      lngText.textContent = "--.------";
-      gpsStatusText.textContent =
-        state === "DISARMED"
-          ? "System idle. Coordinates hidden."
-          : "Armed & monitoring. Coordinates reveal only if stolen.";
-
-      mapsLinkBtn.removeAttribute("href");
-      mapsLinkBtn.removeAttribute("target");
-      mapsLinkBtn.disabled = true;
-      mapsLinkBtn.setAttribute("disabled", "true");
-      mapsLinkBtn.classList.add("disabled");
-      mapsLinkBtn.style.pointerEvents = "none";
-      mapsLinkBtn.style.opacity = "0.5";
-      mapsLinkBtn.style.cursor = "not-allowed";
-      mapsLinkBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      };
-    }
+    
   });
 }
 
@@ -384,6 +398,7 @@ btnNotMe.addEventListener("click", () => {
   lastCommandTime = Date.now();
   pendingState = "STOLEN";
   renderState("STOLEN", buzzerToggle.checked);
+  updateTrackButton("STOLEN");
 
   update(activeBagRef, { state: "STOLEN" });
   addLog("Owner reported theft ('No, Stolen!') - Emergency alarm locked ON.", "danger");
