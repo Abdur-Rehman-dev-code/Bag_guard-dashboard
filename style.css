@@ -1,237 +1,585 @@
+/* ==========================================================================
+   BagGuard Dashboard — Earthy Olive & Parchment Palette
+   Palette Swatches:
+     --cream:  #EBEBD8  (Canvas / Light Surface)
+     --moss:   #637545  (Primary Olive Accent / Active / Armed)
+     --forest: #455230  (Deep Forest Olive / Primary Ink / Header)
+     --sage:   #9BA685  (Muted Sage / Borders / Secondary Controls)
+   ========================================================================== */
+
 :root {
-  --bg-dark: black;
-  --card-bg: darkslategray;
-  --border-color: gray;
-  --text-main: white;
-  --text-muted: lightgray;
-  --green: limegreen;
-  --orange: orange;
-  --red: red;
-  --blue: deepskyblue;
+  /* Core Provided Palette */
+  --cream: #EBEBD8;
+  --moss: #637545;
+  --forest: #455230;
+  --sage: #9BA685;
+
+  /* Derived Palette Tints & Shades */
+  --surface-elevated: #F5F5EA;
+  --surface-well: #E2E3CC;
+  --forest-deep: #343F23;
+  --moss-hover: #55663A;
+  --sage-soft: rgba(155, 166, 133, 0.28);
+  --sage-border: rgba(155, 166, 133, 0.72);
+  --ink-primary: #2F3820;
+  --ink-secondary: #586544;
+  --ink-on-dark: #EBEBD8;
+  --ink-on-dark-muted: #C9D0BA;
+
+  /* Harmonized Semantic Alert Tones */
+  --arming-bg: #F3EAD3;
+  --arming-text: #7A5411;
+  --arming-border: #C49746;
+
+  --alert-bg: #F6E5D4;
+  --alert-text: #8F4214;
+  --alert-accent: #C76828;
+  --alert-border: #D98B52;
+
+  --danger-bg: #F6DFDD;
+  --danger-text: #8E251D;
+  --danger-accent: #B9382C;
+  --danger-hover: #9C2C22;
+  --danger-border: #D47A71;
+
+  /* Radii, Shadows & Typography */
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  --shadow-sm: 0 2px 8px rgba(69, 82, 48, 0.07);
+  --shadow-md: 0 10px 28px rgba(69, 82, 48, 0.11);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-* {
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Agrave Pro", Roboto, sans-serif;
-}
-/* 1. Default font for everything else (buttons, descriptions, labels) */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", Roboto, sans-serif;
 }
 
-/* 2. Custom font ONLY for the main "BagGuard" heading */
-.brand h1 {
-  font-size: 1.4rem;
-  letter-spacing: 0.5px;
-  font-family: "Segoe UI", sans-serif;
-}
-
-/* 3. Custom font ONLY for the "Cloud IoT Asset Security" subtitle */
-.subtitle {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-family: "Cherry Bomb One", monospace;
-}
-.alert-text p,.state-display p{
-  font-size: 1rem;
-  letter-spacing: 0.5px;
-  font-family: "Oxygen", sans-serif;
-}
-.card-headerr span,.state-display div,.arm-control span{
-    font-size: 1.35rem;
-  letter-spacing: 0.5px;
-  font-family: "Oxygen", sans-serif;
-}
-.gps-coords small{
-  font-size: 1.2rem;
-  letter-spacing: 0.3px;
-  font-family: "Oxygen", sans-serif;
-}
-.bag-selector label,.card-header span {
-  font-size: 1.35rem;
-  letter-spacing: 0.5px;
-  font-weight: bold;
-  font-family: "Segoe UI", sans-serif;
-}
-/* 4. Full-Screen Greenish-Slate Page Background (Edge-to-Edge, No Outer Box) */
+html,
 body {
-  background-color: var(--card-bg);
-  color: var(--text-main);
-  height: 100vh;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
+  min-height: 100%;
 }
 
-.app-container {
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 24px 32px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 22px;
-}
-
-/* 5. Rounded BagGuard Top Header Box (Contrasting Dark Box Inside Outer Frame) */
-.topbar {
-  width: 100%;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 18px 28px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.logo-icon {
-  font-size: 2.6rem;
-  line-height: 1;
-}
-
-.bag-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bag-selector input {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  padding: 10px 14px;
-  border-radius: 8px;
-  width: 125px;
-  font-weight: 700;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.btn-secondary {
-  background: dimgray;
-  color: var(--text-main);
-  border: 1px solid var(--border-color);
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background: gray;
-}
-
-/* 6. 2FA Motion Alert Banner */
-.alert-banner {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  background: saddlebrown;
-  border: 2px solid var(--orange);
-  padding: 16px 24px;
-  border-radius: 14px;
-  flex-shrink: 0;
+body {
+  font-family: var(--font-sans);
+  background-color: var(--cream);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(155, 166, 133, 0.26) 0%, transparent 44%),
+    radial-gradient(circle at 88% 92%, rgba(99, 117, 69, 0.14) 0%, transparent 48%);
+  color: var(--ink-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 .hidden {
   display: none !important;
 }
 
+/* Focus Accessibility */
+:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Main Layout Shell
+   ========================================================================== */
+
+.app-shell {
+  max-width: 1180px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 28px 28px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ==========================================================================
+   Top Header Bar (Deep Forest Olive Anchor)
+   ========================================================================== */
+
+.topbar {
+  background: linear-gradient(135deg, var(--forest) 0%, var(--forest-deep) 100%);
+  color: var(--ink-on-dark);
+  border: 1px solid rgba(155, 166, 133, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 18px 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: var(--moss);
+  color: var(--cream);
+  border: 1px solid rgba(235, 235, 216, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.brand-copy h1 {
+  font-size: 1.38rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--cream);
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-on-dark-muted);
+  margin-top: 2px;
+}
+
+.selector-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bag-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(235, 235, 216, 0.1);
+  border: 1px solid rgba(155, 166, 133, 0.45);
+  border-radius: 12px;
+  padding: 6px 6px 6px 14px;
+}
+
+.bag-selector label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-on-dark-muted);
+  white-space: nowrap;
+}
+
+.bag-selector input {
+  background: var(--cream);
+  color: var(--forest-deep);
+  border: 1px solid var(--sage);
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 140px;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.04em;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bag-selector input::placeholder {
+  color: var(--ink-secondary);
+  opacity: 0.65;
+}
+
+.bag-selector input:focus {
+  outline: none;
+  border-color: var(--moss);
+  box-shadow: 0 0 0 3px rgba(155, 166, 133, 0.45);
+}
+
+.btn-primary {
+  background: var(--moss);
+  color: var(--cream);
+  border: 1px solid rgba(235, 235, 216, 0.24);
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.12s ease;
+}
+
+.btn-primary:hover {
+  background: #738851;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.input-feedback {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #F8D3C9;
+}
+
+/* ==========================================================================
+   2FA Motion Alert Banner
+   ========================================================================== */
+
+.alert-banner {
+  background: var(--alert-bg);
+  border: 1.5px solid var(--alert-border);
+  border-left: 6px solid var(--alert-accent);
+  border-radius: var(--radius-lg);
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 8px 22px rgba(199, 104, 40, 0.16);
+  animation: pulseBorder 2s infinite;
+}
+
+@keyframes pulseBorder {
+  0%, 100% {
+    box-shadow: 0 8px 22px rgba(199, 104, 40, 0.15);
+  }
+  50% {
+    box-shadow: 0 8px 26px rgba(199, 104, 40, 0.28);
+  }
+}
+
+.alert-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.alert-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(199, 104, 40, 0.15);
+  color: var(--alert-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .alert-text h2 {
-  color: var(--orange);
-  margin-bottom: 4px;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: var(--alert-text);
+  margin-bottom: 2px;
+}
+
+.alert-text p {
+  font-size: 0.9rem;
+  color: #6B3C1B;
 }
 
 .alert-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .btn-safe,
 .btn-danger {
-  color: white;
   border: none;
-  padding: 12px 22px;
-  border-radius: 8px;
+  border-radius: 10px;
+  padding: 11px 20px;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.12s ease;
 }
 
 .btn-safe {
-  background: var(--green);
+  background: var(--moss);
+  color: var(--cream);
+}
+
+.btn-safe:hover {
+  background: var(--forest);
 }
 
 .btn-danger {
-  background: var(--red);
+  background: var(--danger-accent);
+  color: #FFFFFF;
 }
 
-/* 7. Left-Aligned System State Box & Live GPS Box */
+.btn-danger:hover {
+  background: var(--danger-hover);
+}
+
+.btn-safe:active,
+.btn-danger:active {
+  transform: translateY(1px);
+}
+
+/* ==========================================================================
+   Main 2-Card Dashboard Grid
+   ========================================================================== */
+
 .dashboard-grid {
-  width: 100%;
-  flex: 1;
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 28px;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 22px;
   align-items: stretch;
-  min-height: 0;
+  flex: 1;
 }
 
 .card {
-  background: var(--bg-dark);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 26px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--sage-border);
+  border-radius: var(--radius-lg);
+  padding: 24px 26px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 22px;
+  box-shadow: var(--shadow-sm);
 }
 
-.card-header,.card-headerr {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding-bottom: 14px;
-  border-bottom: 1px solid dimgray;
+  border-bottom: 1px solid rgba(155, 166, 133, 0.48);
 }
 
+.card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--cream);
+  border: 1px solid rgba(155, 166, 133, 0.65);
+  color: var(--forest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--forest);
+}
+
+/* Connection Status Pill */
 .conn-badge {
-  color: var(--green);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
 }
 
-/* 8. Security System Lock Box */
-.arm-control {
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.conn-idle {
+  background: var(--cream);
+  color: var(--ink-secondary);
+  border-color: var(--sage);
+}
+
+.conn-syncing {
+  background: var(--arming-bg);
+  color: var(--arming-text);
+  border-color: var(--arming-border);
+}
+
+.conn-syncing .conn-dot {
+  animation: blinkDot 1.2s infinite ease-in-out;
+}
+
+.conn-connected {
+  background: rgba(99, 117, 69, 0.14);
+  color: var(--forest);
+  border-color: rgba(99, 117, 69, 0.45);
+}
+
+.conn-connected .conn-dot {
+  background: var(--moss);
+}
+
+.conn-error {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+}
+
+@keyframes blinkDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ==========================================================================
+   System State Hero Block & Badges
+   ========================================================================== */
+
+.state-display {
+  background: var(--cream);
+  border: 1px solid rgba(155, 166, 133, 0.6);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+
+.state-disarmed {
+  background: var(--sage-soft);
+  color: var(--forest);
+  border-color: var(--sage);
+}
+
+.state-arming {
+  background: var(--arming-bg);
+  color: var(--arming-text);
+  border-color: var(--arming-border);
+}
+
+.state-armed {
+  background: var(--moss);
+  color: var(--cream);
+  border-color: var(--forest);
+  box-shadow: 0 4px 12px rgba(99, 117, 69, 0.25);
+}
+
+.state-alert {
+  background: var(--alert-bg);
+  color: var(--alert-text);
+  border-color: var(--alert-border);
+}
+
+.state-stolen {
+  background: var(--danger-accent);
+  color: #FFFFFF;
+  border-color: var(--danger-hover);
+  box-shadow: 0 4px 14px rgba(185, 56, 44, 0.32);
+}
+
+.state-desc {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+}
+
+.sub-status {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+/* ==========================================================================
+   Dual Toggle Controls (Security Lock & Find My Bag Buzzer)
+   ========================================================================== */
+
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--card-bg);
-  padding: 20px 22px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  margin-top: 16px;
+  gap: 16px;
+  background: var(--cream);
+  border: 1px solid var(--sage-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
+.control-row:hover {
+  border-color: var(--moss);
+}
+
+.control-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.control-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--forest);
+}
+
+.control-hint {
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+}
+
+.buzzer-control {
+  background: #EFEFDE;
+  border-style: dashed;
+  border-color: var(--sage);
+}
+
+/* Tactile Toggle Switch */
 .switch {
   position: relative;
   display: inline-block;
-  width: 68px;
-  height: 36px;
+  width: 60px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .switch input {
@@ -242,209 +590,164 @@ body {
 
 .slider {
   position: absolute;
-  cursor: pointer;
   inset: 0;
-  background-color: dimgray;
-  border-radius: 36px;
-  transition: 0.3s;
+  cursor: pointer;
+  background-color: var(--sage);
+  border-radius: 999px;
+  transition: background-color 0.25s ease;
 }
 
-.slider:before {
-  position: absolute;
+.slider::before {
   content: "";
-  height: 28px;
-  width: 28px;
+  position: absolute;
+  height: 24px;
+  width: 24px;
   left: 4px;
   bottom: 4px;
-  background-color: white;
+  background-color: var(--cream);
   border-radius: 50%;
-  transition: 0.3s;
+  box-shadow: 0 2px 5px rgba(47, 56, 32, 0.22);
+  transition: transform 0.25s ease, background-color 0.25s ease;
 }
 
-input:checked + .slider {
-  background-color: var(--green);
+.switch input:checked + .slider {
+  background-color: var(--moss);
 }
 
-input:checked + .slider:before {
-  transform: translateX(32px);
+.switch input:checked + .slider::before {
+  transform: translateX(28px);
+  background-color: #FFFFFF;
 }
 
-/* 9. System Status Pill & Sub-Text */
-.state-display {
-  text-align: left;
-  padding: 16px 0 4px;
+.switch input:checked + .slider-buzzer {
+  background-color: var(--alert-accent);
 }
 
-.state-badge {
-  display: inline-block;
-  font-weight: 800;
-  padding: 12px 26px;
-  border-radius: 10px;
-  margin-bottom: 14px;
+.switch input:focus-visible + .slider {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
 }
 
-.state-disarmed {
-  background: dimgray;
-  color: var(--text-main);
+/* ==========================================================================
+   Live GPS Card
+   ========================================================================== */
+
+.gps-privacy-tag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--ink-secondary);
+  border: 1px solid var(--sage);
 }
 
-.state-arming {
-  background: midnightblue;
-  color: var(--blue);
-  border: 1px solid var(--blue);
+.gps-privacy-tag.tag-live {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
 }
 
-.state-armed {
-  background: darkgreen;
-  color: var(--green);
-  border: 1px solid var(--green);
+.gps-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.state-alert {
-  background: saddlebrown;
-  color: var(--orange);
-  border: 1px solid var(--orange);
-}
-
-.state-stolen {
-  background: darkred;
-  color: white;
-  border: 1px solid var(--red);
-}
-
-.state-desc {
-  margin-bottom: 8px;
-}
-
-.sub-status {
-  color: var(--text-muted);
-}
-
-/* 10. Live GPS Coordinates & Maps Button */
 .gps-coords {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  background: var(--card-bg);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  margin: 16px 0 14px;
+  gap: 14px;
 }
 
-.gps-coords p {
-  font-weight: 800;
-  margin-top: 6px;
+.coord-tile {
+  background: var(--cream);
+  border: 1px solid var(--sage-border);
+  border-radius: var(--radius-md);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.hint-text {
-  color: var(--text-muted);
-  margin-bottom: 18px;
+.coord-tile small {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-secondary);
 }
 
+.coord-tile p {
+  font-family: var(--font-mono);
+  font-size: 1.24rem;
+  font-weight: 700;
+  color: var(--forest);
+  letter-spacing: -0.01em;
+}
+
+.gps-status-text {
+  font-size: 0.86rem;
+  color: var(--ink-secondary);
+  background: rgba(155, 166, 133, 0.16);
+  border: 1px solid rgba(155, 166, 133, 0.42);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+}
+
+/* Maps Track Button */
 .btn-maps {
-  display: block;
-  text-align: center;
-  background: var(--blue);
-  color: black;
-  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: var(--radius-md);
+  font-size: 0.94rem;
   font-weight: 800;
-  padding: 16px;
-  border-radius: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
 }
 
 .btn-maps.disabled {
-  background: dimgray;
-  color: var(--text-muted);
+  background: var(--surface-well);
+  color: var(--ink-secondary);
+  border: 1px solid var(--sage);
+  opacity: 0.72;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-maps.track-unlocked {
+  background: var(--danger-accent);
+  color: #FFFFFF;
+  border: 1px solid var(--danger-hover);
+  opacity: 1;
+  cursor: pointer;
   pointer-events: auto;
+  box-shadow: 0 8px 20px rgba(185, 56, 44, 0.3);
 }
 
-/* Mobile Layout: Stack Header + Single-Column Cards + Vertical Scroll */
-@media (max-width: 768px) {
-  html,
-  body {
-    position: static !important;
-    height: auto !important;
-    min-height: 100vh;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    touch-action: pan-y !important;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 32px;
-  }
-
-  /* 1. Header: Logo on top, Bag ID row underneath */
-  header {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
-    height: auto !important;
-  }
-
-  header > div:last-child {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-    width: 100% !important;
-  }
-
-  #bagIdInput {
-    flex: 1 !important;
-    min-width: 0 !important;
-  }
-
-  /* 2. Stack the 2-column row holding System State & Live GPS vertically */
-  div:has(> div #armToggle):has(> div #mapsLinkBtn),
-  section:has(> * #armToggle):has(> * #mapsLinkBtn),
-  main:has(> * #armToggle):has(> * #mapsLinkBtn) {
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    height: auto !important;
-    gap: 16px !important;
-  }
-
-  /* 3. Force both System State and Live GPS cards to 100% width */
-  div:has(> div #armToggle):has(> div #mapsLinkBtn) > *,
-  section:has(> * #armToggle):has(> * #mapsLinkBtn) > *,
-  main:has(> * #armToggle):has(> * #mapsLinkBtn) > * {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    flex: none !important;
-    margin: 0 !important;
-  }
-}
-/* 11. Dual Toggle Controls (Security Lock + Find My Bag Buzzer) */
-.controls-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
+.btn-maps.track-unlocked:hover {
+  background: var(--danger-hover);
+  transform: translateY(-1px);
 }
 
-.controls-group .arm-control {
-  margin-top: 0;
-}
+/* ==========================================================================
+   Collapsible Activity Log Drawer
+   ========================================================================== */
 
-.buzzer-control {
-  border-color: dimgray;
-}
-
-input:checked + .slider-orange {
-  background-color: var(--orange);
-}
-
-/* 12. Collapsible Activity Log Drawer */
 .log-drawer {
-  width: 100%;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--sage-border);
+  border-radius: var(--radius-lg);
   padding: 16px 24px;
-  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .log-drawer-header {
@@ -462,32 +765,40 @@ input:checked + .slider-orange {
 }
 
 .log-arrow {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--forest);
+  background: var(--cream);
+  border: 1px solid var(--sage);
+  padding: 5px 12px;
+  border-radius: 999px;
 }
 
 .btn-clear {
   background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border-color);
-  padding: 4px 10px;
-  border-radius: 6px;
+  color: var(--ink-secondary);
+  border: 1px solid var(--sage);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
   font-size: 0.78rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .btn-clear:hover {
-  background: dimgray;
-  color: var(--text-main);
+  background: var(--forest);
+  border-color: var(--forest);
+  color: var(--cream);
 }
 
 .event-log-list {
   list-style: none;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid dimgray;
-  max-height: 150px;
+  border-top: 1px solid rgba(155, 166, 133, 0.45);
+  max-height: 200px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -495,43 +806,102 @@ input:checked + .slider-orange {
 }
 
 .event-log-list li {
-  background: var(--card-bg);
-  border-left: 3px solid var(--blue);
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 0.88rem;
-}
-
-.event-log-list li.log-alert {
-  border-left-color: var(--orange);
-}
-
-.event-log-list li.log-danger {
-  border-left-color: var(--red);
+  background: var(--cream);
+  border: 1px solid rgba(155, 166, 133, 0.45);
+  border-left: 4px solid var(--sage);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.86rem;
+  color: var(--ink-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 .event-log-list li.log-safe {
-  border-left-color: var(--green);
+  border-left-color: var(--moss);
+}
+
+.event-log-list li.log-alert {
+  border-left-color: var(--alert-accent);
+  background: #F7EFE4;
+}
+
+.event-log-list li.log-danger {
+  border-left-color: var(--danger-accent);
+  background: #F7E8E6;
+}
+
+.event-log-list li.log-empty {
+  border-left-color: var(--sage);
+  color: var(--ink-secondary);
+  font-style: italic;
 }
 
 .log-time {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  margin-right: 8px;
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  font-size: 0.76rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
-.log-empty {
-  border-left-color: dimgray !important;
-  color: var(--text-muted);
+.log-message {
+  word-break: break-word;
 }
-#mapsLinkBtn.track-unlocked {
-  background: #ef4444 !important;
-  background-color: #ef4444 !important;
-  color: #ffffff !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  filter: none !important;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45) !important;
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .app-shell {
+    padding: 16px 14px 28px;
+    gap: 16px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px 18px;
+  }
+
+  .selector-wrap {
+    align-items: stretch;
+  }
+
+  .bag-selector {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bag-selector input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+
+  .alert-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .alert-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .gps-coords {
+    grid-template-columns: 1fr;
+  }
 }

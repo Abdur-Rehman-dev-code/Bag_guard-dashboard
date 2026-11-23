@@ -1,5 +1,3 @@
-
-
 // Import Firebase App & Realtime Database from Google CDN
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -10,7 +8,7 @@ import {
   off
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// Your web app's Firebase configuration
+// Firebase project configuration (same backend endpoint & schema)
 const firebaseConfig = {
   apiKey: "AIzaSyAhDuCugiBhbObJrZA-n-e9Ih1k9IwnkVM",
   authDomain: "bagguard-cbbe8.firebaseapp.com",
@@ -21,11 +19,21 @@ const firebaseConfig = {
   appId: "1:437565335164:web:1484949049477741d14bf9"
 };
 
-// Initialize Firebase (Only Once!)
+// Initialize Firebase once
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-// --- COMMAND-SYNC GUARD STATE ---
+
+// Security & validation constants
+const BAG_ID_REGEX = /^[A-Z0-9][A-Z0-9_-]{0,31}$/;
+const ALLOWED_STATES = new Set(["DISARMED", "ARMING", "ARMED", "ALERT", "STOLEN"]);
+const DEFAULT_LAT = 24.8607;
+const DEFAULT_LNG = 67.0011;
+const MAX_LOG_ENTRIES = 100;
+const COMMAND_GUARD_MS = 5000;
+
+// DOM references
 const bagIdInput = document.getElementById("bagIdInput");
+const bagIdError = document.getElementById("bagIdError");
 const connectBtn = document.getElementById("connectBtn");
 const connectionDot = document.getElementById("connectionDot");
 
@@ -44,6 +52,7 @@ const btnNotMe = document.getElementById("btnNotMe");
 const latText = document.getElementById("latText");
 const lngText = document.getElementById("lngText");
 const gpsStatusText = document.getElementById("gpsStatusText");
+const gpsPrivacyTag = document.getElementById("gpsPrivacyTag");
 const mapsLinkBtn = document.getElementById("mapsLinkBtn");
 
 const toggleLogBtn = document.getElementById("toggleLogBtn");
@@ -51,81 +60,128 @@ const logArrow = document.getElementById("logArrow");
 const clearLogBtn = document.getElementById("clearLogBtn");
 const eventLogList = document.getElementById("eventLogList");
 
-if (mapsLinkBtn) {
-  mapsLinkBtn.removeAttribute("href");
-  mapsLinkBtn.removeAttribute("target");
-  mapsLinkBtn.style.opacity = "0.5";
-  mapsLinkBtn.style.cursor = "not-allowed";
-  mapsLinkBtn.onclick = (e) => {
-    e.preventDefault();
-    return false;
-  };
-}
-// =========================================================================
-// STAGE 3: REMEMBERING THE BAG ID & SETTING UP TRACKING VARIABLES
-// =========================================================================
-
-// Start blank so the HTML placeholder shows until the user types a Bag ID
-// Load previously typed Bag ID if saved; otherwise stay blank so placeholder shows
-let currentBagId = localStorage.getItem("bagguard_bag_id") || "";
-bagIdInput.value = currentBagId;
-// Holds the active Firebase folder path (e.g., "bags/BG-101") so we can disconnect it if the user changes bags
+// Tracking & command-sync guard state
+let currentBagId = "";
 let activeBagRef = null;
-
-// Remembers the previous state (e.g., "ARMED") so we don't print duplicate log entries on every GPS update
 let lastKnownState = null;
+let lastLat = DEFAULT_LAT;
+let lastLng = DEFAULT_LNG;
 
-// --- COMMAND-SYNC GUARD (Prevents stale ESP32 packets from undoing button clicks) ---
 let lastCommandTime = 0;
 let pendingState = null;
-const COMMAND_GUARD_MS = 5000;
-
 
 // =========================================================================
-// STAGE 4: ADDING TIMESTAMPED ENTRIES TO THE ACTIVITY LOG
+// HELPERS: VALIDATION, CONNECTION BADGE & SAFE LOGGING
 // =========================================================================
 
+function readStoredBagId() {
+  try {
+    return localStorage.getItem("bagguard_bag_id") || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStoredBagId(bagId) {
+  try {
+    if (bagId) {
+      localStorage.setItem("bagguard_bag_id", bagId);
+    } else {
+      localStorage.removeItem("bagguard_bag_id");
+    }
+  } catch {
+    // Ignore storage errors in restricted browser contexts
+  }
+}
+
+function sanitizeBagId(rawValue) {
+  if (typeof rawValue !== "string") return null;
+  const normalized = rawValue.trim().toUpperCase();
+  if (!BAG_ID_REGEX.test(normalized)) return null;
+  return normalized;
+}
+
+function showInputFeedback(message) {
+  if (!bagIdError) return;
+  if (!message) {
+    bagIdError.textContent = "";
+    bagIdError.classList.add("hidden");
+    return;
+  }
+  bagIdError.textContent = message;
+  bagIdError.classList.remove("hidden");
+}
+
+function setConnectionStatus(status, label) {
+  if (!connectionDot) return;
+  connectionDot.className = `conn-badge conn-${status}`;
+  const labelSpan = connectionDot.querySelector(".conn-label");
+  if (labelSpan) {
+    labelSpan.textContent = label;
+  } else {
+    connectionDot.textContent = label;
+  }
+}
+
+function isValidCoordinate(lat, lng) {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    Math.abs(lat) > 0.001 &&
+    Math.abs(lng) > 0.001
+  );
+}
+
+// Safe DOM-based activity log writer (no innerHTML to prevent DOM XSS)
 function addLog(message, type = "info") {
-  // Look inside HTML <ul id="eventLogList"> for the placeholder line <li class="log-empty">
-  const emptyItem = eventLogList.querySelector(".log-empty");
+  if (!eventLogList) return;
 
-  // If the placeholder "Waiting for system activity..." is still there, delete it before adding real logs
+  const emptyItem = eventLogList.querySelector(".log-empty");
   if (emptyItem) emptyItem.remove();
 
-  // Grab the computer's current local clock time (e.g., "03:45:10 PM")
   const now = new Date().toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit"
   });
 
-  // Create a brand-new HTML <li> bullet element in memory
   const li = document.createElement("li");
+  if (type === "safe" || type === "alert" || type === "danger") {
+    li.classList.add(`log-${type}`);
+  }
 
-  // Add a colored left border class ("log-safe", "log-alert", or "log-danger") defined in style.css
-  if (type !== "info") li.classList.add(`log-${type}`);
+  const timeSpan = document.createElement("span");
+  timeSpan.className = "log-time";
+  timeSpan.textContent = now;
 
-  // Fill the <li> with a muted timestamp span plus the event message
-  li.innerHTML = `<span class="log-time">${now}</span>${message}`;
+  const msgSpan = document.createElement("span");
+  msgSpan.className = "log-message";
+  msgSpan.textContent = String(message);
 
-  // Insert the newest log entry at the very top of HTML <ul id="eventLogList">
+  li.append(timeSpan, msgSpan);
   eventLogList.prepend(li);
+
+  while (eventLogList.children.length > MAX_LOG_ENTRIES) {
+    eventLogList.lastElementChild.remove();
+  }
 }
 
+// =========================================================================
+// VISUAL STATE & GPS RENDERING
+// =========================================================================
 
-// =========================================================================
-// STAGE 5: UPDATING THE VISUAL DASHBOARD BASED ON BAG STATE
-// =========================================================================
 function setStatusTexts(badgeText, descText, subText) {
   if (stateBadge) stateBadge.textContent = badgeText;
   if (stateDescription) stateDescription.textContent = descText;
   if (subStatusText) subStatusText.textContent = subText;
 }
-function renderState(state, findBuzzer = false) {
-  // Reset HTML <div id="stateBadge"> back to its base class before adding a state color class
-  if (stateBadge) stateBadge.className = "state-badge";
 
-  // Hide the top orange 2FA alert banner <section id="alertBanner"> by default (only shown in ALERT)
+function renderState(state, findBuzzer = false) {
+  if (stateBadge) stateBadge.className = "state-badge";
   if (alertBanner) alertBanner.classList.add("hidden");
 
   if (state === "ARMING") {
@@ -139,7 +195,6 @@ function renderState(state, findBuzzer = false) {
       "Arming in progress... Close and secure your bag.",
       "Notification status: Arming countdown active"
     );
-
   } else if (state === "ARMED") {
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
@@ -151,7 +206,6 @@ function renderState(state, findBuzzer = false) {
       "Motion sensors active. Watching for movement.",
       "Notification status: Armed & monitoring"
     );
-
   } else if (state === "ALERT") {
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
@@ -160,11 +214,10 @@ function renderState(state, findBuzzer = false) {
 
     if (stateBadge) stateBadge.classList.add("state-alert");
     setStatusTexts(
-      "⚠️ MOTION ALERT",
-      "Movement detected! Confirm identity above.",
+      "MOTION ALERT",
+      "Movement detected! Confirm identity in the banner above.",
       "Notification status: 2FA Verification Sent"
     );
-
   } else if (state === "STOLEN") {
     armToggle.checked = true;
     buzzerControl.classList.remove("hidden");
@@ -173,13 +226,11 @@ function renderState(state, findBuzzer = false) {
 
     if (stateBadge) stateBadge.classList.add("state-stolen");
     setStatusTexts(
-      "🚨 BAG STOLEN",
+      "BAG STOLEN",
       "Theft confirmed! Alarm locked ON & GPS tracking live.",
       "Notification status: Emergency Theft Mode"
     );
-
   } else {
-    // DEFAULT / DISARMED (IDLE) STATE:
     armToggle.checked = false;
     buzzerControl.classList.add("hidden");
     buzzerToggle.checked = false;
@@ -187,62 +238,65 @@ function renderState(state, findBuzzer = false) {
     if (stateBadge) stateBadge.classList.add("state-disarmed");
     setStatusTexts(
       "IDLE (DISARMED)",
-      "Bag is idle. Turn on the lock above to arm.",
+      "Bag is idle. Turn on the lock below to arm.",
       "Notification status: Standby"
     );
   }
 }
-function updateTrackButton(state, lat = 24.8607, lng = 67.0011) {
+
+function updateTrackButton(state, lat = lastLat, lng = lastLng) {
   if (!mapsLinkBtn) return;
 
+  const safeLat = Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : DEFAULT_LAT;
+  const safeLng = Number.isFinite(lng) && lng >= -180 && lng <= 180 ? lng : DEFAULT_LNG;
+
   if (state === "STOLEN") {
-    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-    latText.textContent = lat.toFixed(6);
-    lngText.textContent = lng.toFixed(6);
-    if (gpsStatusText) gpsStatusText.textContent = "Theft confirmed! Live location tracking active.";
+    const formattedLat = safeLat.toFixed(6);
+    const formattedLng = safeLng.toFixed(6);
+    const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(formattedLat)},${encodeURIComponent(formattedLng)}`;
+
+    latText.textContent = formattedLat;
+    lngText.textContent = formattedLng;
+
+    if (gpsStatusText) {
+      gpsStatusText.textContent = "Theft confirmed! Live location tracking is active.";
+    }
+    if (gpsPrivacyTag) {
+      gpsPrivacyTag.textContent = "Live Tracking";
+      gpsPrivacyTag.classList.add("tag-live");
+    }
 
     mapsLinkBtn.setAttribute("href", mapsUrl);
     mapsLinkBtn.setAttribute("target", "_blank");
-    mapsLinkBtn.disabled = false;
-    mapsLinkBtn.removeAttribute("disabled");
-    mapsLinkBtn.removeAttribute("aria-disabled");
-    mapsLinkBtn.classList.remove("disabled", "btn-disabled", "locked");
+    mapsLinkBtn.setAttribute("rel", "noopener noreferrer");
+    mapsLinkBtn.setAttribute("aria-disabled", "false");
+    mapsLinkBtn.classList.remove("disabled");
     mapsLinkBtn.classList.add("track-unlocked");
-
-    mapsLinkBtn.style.setProperty("pointer-events", "auto", "important");
-    mapsLinkBtn.style.setProperty("opacity", "1", "important");
-    mapsLinkBtn.style.setProperty("filter", "none", "important");
-    mapsLinkBtn.style.setProperty("cursor", "pointer", "important");
-    mapsLinkBtn.style.setProperty("background", "#ef4444", "important");
-    mapsLinkBtn.style.setProperty("color", "#ffffff", "important");
 
     mapsLinkBtn.onclick = (e) => {
       e.preventDefault();
-      window.open(mapsUrl, "_blank", "noopener");
+      window.open(mapsUrl, "_blank", "noopener,noreferrer");
     };
   } else {
     latText.textContent = "--.------";
     lngText.textContent = "--.------";
+
     if (gpsStatusText) {
       gpsStatusText.textContent =
         state === "DISARMED"
-          ? "System idle. Coordinates hidden."
+          ? "System idle. Coordinates stay hidden unless theft is confirmed."
           : "Armed & monitoring. Coordinates reveal only if stolen.";
+    }
+    if (gpsPrivacyTag) {
+      gpsPrivacyTag.textContent = "Privacy Locked";
+      gpsPrivacyTag.classList.remove("tag-live");
     }
 
     mapsLinkBtn.removeAttribute("href");
     mapsLinkBtn.removeAttribute("target");
-    mapsLinkBtn.disabled = true;
-    mapsLinkBtn.setAttribute("disabled", "true");
+    mapsLinkBtn.setAttribute("aria-disabled", "true");
     mapsLinkBtn.classList.remove("track-unlocked");
     mapsLinkBtn.classList.add("disabled");
-
-    mapsLinkBtn.style.setProperty("pointer-events", "none", "important");
-    mapsLinkBtn.style.setProperty("opacity", "0.5", "important");
-    mapsLinkBtn.style.setProperty("cursor", "not-allowed", "important");
-    mapsLinkBtn.style.removeProperty("background");
-    mapsLinkBtn.style.removeProperty("background-color");
-    mapsLinkBtn.style.removeProperty("color");
 
     mapsLinkBtn.onclick = (e) => {
       e.preventDefault();
@@ -253,107 +307,131 @@ function updateTrackButton(state, lat = 24.8607, lng = 67.0011) {
 }
 
 // =========================================================================
-// STAGE 6: LIVE TWO-WAY SYNC WITH FIREBASE REALTIME DATABASE
+// LIVE TWO-WAY SYNC WITH FIREBASE REALTIME DATABASE
 // =========================================================================
 
-function connectToBag(bagId) {
-  // If we were already listening to a previous bag in Firebase, detach that old listener first
-  if (activeBagRef) off(activeBagRef);
-
- // Clean up spaces and convert letters to UPPERCASE; stop if box is empty
-  currentBagId = bagId.trim().toUpperCase();
-  if (!currentBagId) return;
-
-  bagIdInput.value = currentBagId;
-  localStorage.setItem("bagguard_bag_id", currentBagId);
-
-  // Show an orange "Syncing..." indicator in HTML <span id="connectionDot"> while connecting
-  connectionDot.textContent = "● Syncing...";
-  connectionDot.style.color = "orange";
-  lastKnownState = null;
-
-  // Point Firebase to the database folder "bags/<currentBagId>" (for example: "bags/BG-101")
-  activeBagRef = ref(db, `bags/${currentBagId}`);
-
-  // Start a live listener: runs automatically now AND every time Firebase data changes (from web or ESP32)
-  onValue(activeBagRef, (snapshot) => {
-    // Update HTML <span id="connectionDot"> to green once Firebase responds
-    connectionDot.textContent = `● Connected (${currentBagId})`;
-    connectionDot.style.color = "limegreen";
-
-    // Read the JSON object stored at "bags/BG-101" (if empty in Firebase, use an empty object {})
-    const data = snapshot.val() || {};
-
-   // Extract "state" (default "DISARMED") and "findBuzzer" (default false) from Firebase
-    let state = data.state || "DISARMED";
-    const findBuzzer = Boolean(data.findBuzzer);
-
-    // --- COMMAND-SYNC GUARD CHECK ---
-   const timeSinceClick = Date.now() - lastCommandTime;
-    if (pendingState && timeSinceClick < COMMAND_GUARD_MS) {
-      // Allow ESP32 to advance ARMING -> ARMED immediately
-      if (pendingState === "ARMING" && state === "ARMED") {
-        pendingState = null;
-      } else if (state !== pendingState) {
-        state = pendingState; // Keep our newly clicked state (e.g., DISARMED) on screen
-      } else {
-        pendingState = null;  // ESP32 confirmed the change; release guard early
-      }
-    } else {
-      pendingState = null;
-    }
-
-    // Pass guarded state to Stage 5 to update all switches, badges, and banners on screen
-    renderState(state, findBuzzer);
-
-    // Only write a new entry to <ul id="eventLogList"> if the security state actually changed
-    if (state !== lastKnownState) {
-      if (state === "ARMING") addLog("Security lock turned ON - Arming started.", "info");
-      if (state === "ARMED") addLog("System is now ARMED & protected.", "safe");
-      if (state === "ALERT") addLog("⚠️ Motion detected! 2FA alert triggered.", "alert");
-      if (state === "STOLEN") addLog("🚨 Theft confirmed! Alarm & live GPS active.", "danger");
-      if (state === "DISARMED" && lastKnownState !== null) {
-        addLog("System DISARMED (Idle).", "safe");
-      }
-      lastKnownState = state;
-    }
-
-    // Use live NEO-6M coordinates if valid; otherwise use fallback coordinates
-    const rawLat = Number(data.lat);
-    const rawLng = Number(data.lng);
-    const hasLiveGPS = Math.abs(rawLat) > 0.001 && Math.abs(rawLng) > 0.001;
-
-    const lat = hasLiveGPS ? rawLat : 24.8607;
-    const lng = hasLiveGPS ? rawLng : 67.0011;
-
-    updateTrackButton(state, lat, lng);
-
-    
+function sendBagUpdate(payload, errorContext) {
+  if (!activeBagRef) return;
+  update(activeBagRef, payload).catch((err) => {
+    pendingState = null;
+    setConnectionStatus("error", "Write Failed");
+    addLog(`Failed to ${errorContext}: ${err.message || "Permission or network error."}`, "danger");
   });
 }
 
-  
+function connectToBag(bagId) {
+  const validId = sanitizeBagId(bagId);
+  if (!validId) {
+    showInputFeedback("Use 1–32 letters, numbers, '-' or '_' only (e.g. BG-001).");
+    return false;
+  }
+
+  showInputFeedback("");
+
+  if (activeBagRef) off(activeBagRef);
+
+  currentBagId = validId;
+  bagIdInput.value = currentBagId;
+  writeStoredBagId(currentBagId);
+
+  setConnectionStatus("syncing", `Syncing (${currentBagId})...`);
+  lastKnownState = null;
+
+  // Keep exact Firebase Realtime Database endpoint: bags/<currentBagId>
+  activeBagRef = ref(db, `bags/${currentBagId}`);
+
+  onValue(
+    activeBagRef,
+    (snapshot) => {
+      setConnectionStatus("connected", `Connected (${currentBagId})`);
+
+      const data = snapshot.val() || {};
+      const rawState = typeof data.state === "string" ? data.state.toUpperCase() : "DISARMED";
+      let state = ALLOWED_STATES.has(rawState) ? rawState : "DISARMED";
+      const findBuzzer = Boolean(data.findBuzzer);
+
+      // Command-sync guard prevents stale ESP32 packets from reverting recent clicks
+      const timeSinceClick = Date.now() - lastCommandTime;
+      if (pendingState && timeSinceClick < COMMAND_GUARD_MS) {
+        if (pendingState === "ARMING" && state === "ARMED") {
+          pendingState = null;
+        } else if (state !== pendingState) {
+          state = pendingState;
+        } else {
+          pendingState = null;
+        }
+      } else {
+        pendingState = null;
+      }
+
+      renderState(state, findBuzzer);
+
+      if (state !== lastKnownState) {
+        if (state === "ARMING") addLog("Security lock turned ON - Arming started.", "info");
+        if (state === "ARMED") addLog("System is now ARMED & protected.", "safe");
+        if (state === "ALERT") addLog("Motion detected! 2FA alert triggered.", "alert");
+        if (state === "STOLEN") addLog("Theft confirmed! Alarm & live GPS active.", "danger");
+        if (state === "DISARMED" && lastKnownState !== null) {
+          addLog("System DISARMED (Idle).", "safe");
+        }
+        lastKnownState = state;
+      }
+
+      // Use live NEO-6M coordinates if finite & in range; otherwise fallback
+      const rawLat = Number(data.lat);
+      const rawLng = Number(data.lng);
+      const hasLiveGPS = isValidCoordinate(rawLat, rawLng);
+
+      lastLat = hasLiveGPS ? rawLat : DEFAULT_LAT;
+      lastLng = hasLiveGPS ? rawLng : DEFAULT_LNG;
+
+      updateTrackButton(state, lastLat, lastLng);
+    },
+    (error) => {
+      setConnectionStatus("error", "Sync Error");
+      addLog(`Connection error for ${currentBagId}: ${error.message || "Access denied."}`, "danger");
+    }
+  );
+
+  return true;
+}
 
 // =========================================================================
-// STAGE 7: HANDLING USER CLICKS & TOGGLE SWITCHES
+// USER INTERACTIONS & EVENT LISTENERS
 // =========================================================================
 
-// When the user clicks the "Set" button <button id="connectBtn"> in the header:
-connectBtn.addEventListener("click", () => {
+function handleConnectBag() {
   const typedId = bagIdInput.value.trim();
   if (!typedId) {
-    alert("Please enter a Bag ID first.");
+    showInputFeedback("Please enter a Bag ID first.");
+    bagIdInput.focus();
     return;
   }
-  connectToBag(typedId);
-  addLog(`Switched active device to ${currentBagId}.`, "info");
+  if (connectToBag(typedId)) {
+    addLog(`Switched active device to ${currentBagId}.`, "info");
+  }
+}
+
+connectBtn.addEventListener("click", handleConnectBag);
+
+bagIdInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    handleConnectBag();
+  }
 });
 
-// When the user flips the main Security System Lock switch <input id="armToggle">:
+bagIdInput.addEventListener("input", () => {
+  if (bagIdError && !bagIdError.classList.contains("hidden")) {
+    showInputFeedback("");
+  }
+});
+
 armToggle.addEventListener("change", () => {
   if (!activeBagRef) {
     armToggle.checked = false;
-    alert("Enter a Bag ID and click Set first.");
+    showInputFeedback("Enter a Bag ID and click Set first.");
+    bagIdInput.focus();
     return;
   }
 
@@ -361,7 +439,7 @@ armToggle.addEventListener("change", () => {
     lastCommandTime = Date.now();
     pendingState = "ARMING";
     renderState("ARMING", false);
-    update(activeBagRef, { state: "ARMING" });
+    sendBagUpdate({ state: "ARMING" }, "arm security lock");
   } else {
     lastCommandTime = Date.now();
     pendingState = "DISARMED";
@@ -369,74 +447,86 @@ armToggle.addEventListener("change", () => {
     buzzerToggle.checked = false;
     buzzerControl.classList.add("hidden");
     renderState("DISARMED", false);
+    updateTrackButton("DISARMED");
     addLog("System DISARMED (Idle) - Bag recovered.", "safe");
 
-    update(activeBagRef, { state: "DISARMED", findBuzzer: false });
+    sendBagUpdate({ state: "DISARMED", findBuzzer: false }, "disarm security lock");
   }
 });
 
-// When the user flips the Find My Bag buzzer switch <input id="buzzerToggle">:
 buzzerToggle.addEventListener("change", () => {
   if (!activeBagRef || !armToggle.checked) {
     buzzerToggle.checked = false;
     return;
   }
   const isRinging = buzzerToggle.checked;
-  update(activeBagRef, { findBuzzer: isRinging });
-  addLog(isRinging ? "🔔 Find My Bag buzzer turned ON." : "🔕 Find My Bag buzzer turned OFF.", "alert");
+  sendBagUpdate({ findBuzzer: isRinging }, "toggle Find My Bag buzzer");
+  addLog(
+    isRinging ? "Find My Bag buzzer turned ON." : "Find My Bag buzzer turned OFF.",
+    "alert"
+  );
 });
 
-// When the user clicks "Yes (It's Me)" <button id="btnYesMe"> on the orange 2FA alert banner:
 btnYesMe.addEventListener("click", () => {
   if (!activeBagRef) return;
   lastCommandTime = Date.now();
   pendingState = "DISARMED";
+  lastKnownState = "DISARMED";
   renderState("DISARMED", false);
+  updateTrackButton("DISARMED");
 
-  update(activeBagRef, { state: "DISARMED", findBuzzer: false });
+  sendBagUpdate({ state: "DISARMED", findBuzzer: false }, "verify owner & disarm");
   addLog("Owner verified ('Yes, It's Me') - System disarmed.", "safe");
 });
 
-// When the user clicks "No (Stolen!)" <button id="btnNotMe"> on the orange 2FA alert banner:
 btnNotMe.addEventListener("click", () => {
   if (!activeBagRef) return;
   lastCommandTime = Date.now();
   pendingState = "STOLEN";
+  lastKnownState = "STOLEN";
   renderState("STOLEN", buzzerToggle.checked);
-  updateTrackButton("STOLEN");
+  updateTrackButton("STOLEN", lastLat, lastLng);
 
-  update(activeBagRef, { state: "STOLEN" });
+  sendBagUpdate({ state: "STOLEN" }, "report theft");
   addLog("Owner reported theft ('No, Stolen!') - Emergency alarm locked ON.", "danger");
 });
 
-// When the user clicks the collapsible Recent Activity Log bar <div id="toggleLogBtn">:
-toggleLogBtn.addEventListener("click", (e) => {
-  // Ignore the click if the user specifically clicked the "Clear" button inside the header bar
-  if (e.target === clearLogBtn) return;
+function toggleActivityLog(e) {
+  if (e && e.target === clearLogBtn) return;
 
-  // Toggle ".hidden" on <ul id="eventLogList"> (returns true if now hidden, false if now visible)
   const isHidden = eventLogList.classList.toggle("hidden");
-
-  // Show the "Clear" button <button id="clearLogBtn"> only when the drawer is open
   clearLogBtn.classList.toggle("hidden", isHidden);
+  toggleLogBtn.setAttribute("aria-expanded", String(!isHidden));
+  logArrow.textContent = isHidden ? "Show ▾" : "Hide ▴";
+}
 
-  // Flip the arrow text inside <span id="logArrow"> between "▼ Show" and "▲ Hide"
-  logArrow.textContent = isHidden ? "▼ Show" : "▲ Hide";
+toggleLogBtn.addEventListener("click", toggleActivityLog);
+toggleLogBtn.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    toggleActivityLog(e);
+  }
 });
 
-// When the user clicks the "Clear" button <button id="clearLogBtn">:
-clearLogBtn.addEventListener("click", () => {
-  // Replace all log items inside <ul id="eventLogList"> with a fresh placeholder message
-  eventLogList.innerHTML = `<li class="log-empty">Activity log cleared.</li>`;
+clearLogBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const emptyLi = document.createElement("li");
+  emptyLi.className = "log-empty";
+  emptyLi.textContent = "Activity log cleared.";
+  eventLogList.replaceChildren(emptyLi);
 });
 
-
 // =========================================================================
-// STARTUP: CONNECT IMMEDIATELY WHEN THE WEBPAGE LOADS
+// INITIALIZATION
 // =========================================================================
 
-// Automatically connect to the saved Bag ID ("BG-101") as soon as the browser finishes reading app.js
-// Auto-connect only if the user has already saved a Bag ID previously
-if (currentBagId) {
-  connectToBag(currentBagId);
+updateTrackButton("DISARMED");
+
+const savedBagId = sanitizeBagId(readStoredBagId());
+if (savedBagId) {
+  connectToBag(savedBagId);
+} else {
+  // Discard invalid/corrupted stored value if present
+  writeStoredBagId("");
+  bagIdInput.value = "";
 }

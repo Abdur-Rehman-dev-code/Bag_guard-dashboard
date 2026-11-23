@@ -3,108 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.firebasedatabase.app; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; frame-src https://*.firebaseio.com https://*.firebasedatabase.app; object-src 'none'; base-uri 'self'; form-action 'self';"
+  />
   <title>BagGuard | Smart IoT Asset Security</title>
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23455230'/%3E%3Cpath d='M16 6l8 3v6.5c0 5.1-3.4 9.5-8 10.5-4.6-1-8-5.4-8-10.5V9l8-3z' fill='%23637545' stroke='%23EBEBD8' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M13 16l2 2 4-4' fill='none' stroke='%23EBEBD8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Agrave+Pro:wght@100..700&display=swap" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Oxygen:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Full-Width Top Header Bar -->
+  <div class="app-shell">
+    <!-- Top Navigation & Device Selector Bar -->
     <header class="topbar">
       <div class="brand">
-        <span class="logo-icon">🛡️</span>
-        <div>
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+        </div>
+        <div class="brand-copy">
           <h1>BagGuard</h1>
           <p class="subtitle">Cloud IoT Asset Security</p>
         </div>
       </div>
 
-      <div class="bag-selector">
-        <label for="bagIdInput">Bag ID:</label>
-        <input type="text" id="bagIdInput" placeholder="BG-001" autocomplete="off">
-        <button id="connectBtn" class="btn-secondary">Set</button>
+      <div class="selector-wrap">
+        <div class="bag-selector">
+          <label for="bagIdInput">Bag ID</label>
+          <input
+            type="text"
+            id="bagIdInput"
+            placeholder="BG-001"
+            maxlength="32"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="bagIdError"
+          />
+          <button id="connectBtn" class="btn-primary" type="button">Set</button>
+        </div>
+        <p id="bagIdError" class="input-feedback hidden" role="alert"></p>
       </div>
     </header>
-  <!-- Centered Content Container (Alert Banner + 2 Cards) -->
-    <section id="alertBanner" class="alert-banner hidden">
-      <div class="alert-text">
-        <h2>⚠️ Bag Moving! Is this you?</h2>
-        <p>Sustained motion detected. Verify within 30s or full alarm &amp; GPS lock will engage.</p>
+
+    <!-- 2FA Motion Alert Banner (Hidden unless state === ALERT) -->
+    <section id="alertBanner" class="alert-banner hidden" role="alert" aria-live="assertive">
+      <div class="alert-left">
+        <div class="alert-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <div class="alert-text">
+          <h2>Bag Moving! Is this you?</h2>
+          <p>Sustained motion detected. Verify within 30s or full alarm &amp; GPS lock will engage.</p>
+        </div>
       </div>
       <div class="alert-actions">
-        <button id="btnYesMe" class="btn-safe">Yes (It's Me)</button>
-        <button id="btnNotMe" class="btn-danger">No (Stolen!)</button>
+        <button id="btnYesMe" class="btn-safe" type="button">Yes (It's Me)</button>
+        <button id="btnNotMe" class="btn-danger" type="button">No (Stolen!)</button>
       </div>
     </section>
-    <!--card1 security lock on off , showing the status of the bag -->
-    <!-- Main 2-Card Layout -->
+
+    <!-- Main 2-Card Dashboard Grid -->
     <main class="dashboard-grid">
       <!-- Card 1: System State, Security Lock Switch & Find My Bag Buzzer Switch -->
-      <div class="card status-card" id="statusCard">
-        <div class="card-headerr">
-          <span class="card-title">SYSTEM STATE</span>
-          <span id="connectionDot" class="conn-badge">● Syncing</span>
+      <section class="card status-card" id="statusCard" aria-labelledby="systemStateHeading">
+        <div class="card-header">
+          <div class="card-heading">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
+            <h2 id="systemStateHeading" class="card-title">System State</h2>
+          </div>
+          <span id="connectionDot" class="conn-badge conn-idle">
+            <span class="conn-dot" aria-hidden="true"></span>
+            <span class="conn-label">Standby</span>
+          </span>
+        </div>
+
+        <div class="state-display">
+          <div id="stateBadge" class="state-badge state-disarmed">IDLE (DISARMED)</div>
+          <p id="stateDescription" class="state-desc">Bag is idle. Turn on the lock below to arm.</p>
+          <p id="subStatusText" class="sub-status">Notification status: Standby</p>
         </div>
 
         <div class="controls-group">
-          <div class="arm-control">
-            <span>Security System Lock</span>
-            <label class="switch">
+          <div class="control-row arm-control">
+            <div class="control-info">
+              <span class="control-title">Security System Lock</span>
+              <span class="control-hint">Arms motion sensor &amp; 2FA theft protection</span>
+            </div>
+            <label class="switch" aria-label="Security System Lock">
               <input type="checkbox" id="armToggle" />
               <span class="slider"></span>
             </label>
           </div>
 
-          <div id="buzzerControl" class="arm-control buzzer-control hidden">
-            <span>🔔 Find My Bag (Buzzer)</span>
-            <label class="switch">
+          <div id="buzzerControl" class="control-row arm-control buzzer-control hidden">
+            <div class="control-info">
+              <span class="control-title">Find My Bag (Buzzer)</span>
+              <span class="control-hint">Triggers audible locator tone on device</span>
+            </div>
+            <label class="switch" aria-label="Find My Bag Buzzer">
               <input type="checkbox" id="buzzerToggle" />
-              <span class="slider slider-orange"></span>
+              <span class="slider slider-buzzer"></span>
             </label>
           </div>
         </div>
-
-        <div class="state-display">
-          <div id="stateBadge" class="state-badge state-disarmed">IDLE (DISARMED)</div>
-          <p id="stateDescription" class="state-desc">Bag is idle. Turn on the lock above to arm.</p>
-          <p id="subStatusText" class="sub-status">Notification status: Standby</p>
-        </div>
-      </div>
+      </section>
 
       <!-- Card 2: Live GPS Location & Google Maps Button -->
-      <div class="card gps-card">
+      <section class="card gps-card" aria-labelledby="gpsHeading">
         <div class="card-header">
-          <span class="card-title">LIVE GPS LOCATION:</span>
+          <div class="card-heading">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </span>
+            <h2 id="gpsHeading" class="card-title">Live GPS Location</h2>
+          </div>
+          <span class="gps-privacy-tag" id="gpsPrivacyTag">Privacy Locked</span>
         </div>
 
-        <div class="gps-coords">
-          <div>
-            <small>LATITUDE:</small>
-            <p id="latText">--.------</p>
+        <div class="gps-body">
+          <div class="gps-coords">
+            <div class="coord-tile">
+              <small>Latitude</small>
+              <p id="latText">--.------</p>
+            </div>
+            <div class="coord-tile">
+              <small>Longitude</small>
+              <p id="lngText">--.------</p>
+            </div>
           </div>
-          <div>
-            <small>LONGITUDE:</small>
-            <p id="lngText">--.------</p>
-          </div>
+
+          <p id="gpsStatusText" class="gps-status-text">
+            System idle. Coordinates stay hidden unless theft is confirmed.
+          </p>
         </div>
-        <a id="mapsLinkBtn" href="#" target="_blank" rel="noopener" class="btn-maps disabled">
-          📍 TRACK
+
+        <a
+          id="mapsLinkBtn"
+          href="#"
+          rel="noopener noreferrer"
+          class="btn-maps disabled"
+          aria-disabled="true"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="3 11 22 2 13 21 11 13 3 11" />
+          </svg>
+          <span>Track on Google Maps</span>
         </a>
-      </div>
+      </section>
     </main>
 
     <!-- Collapsible Activity Log Drawer (Closed by Default) -->
-    <section class="log-drawer">
-      <div class="log-drawer-header" id="toggleLogBtn">
-        <span class="card-title">📋 RECENT ACTIVITY LOG</span>
+    <section class="log-drawer" aria-labelledby="activityLogHeading">
+      <div
+        class="log-drawer-header"
+        id="toggleLogBtn"
+        role="button"
+        tabindex="0"
+        aria-expanded="false"
+        aria-controls="eventLogList"
+      >
+        <div class="card-heading">
+          <span class="card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </span>
+          <h2 id="activityLogHeading" class="card-title">Recent Activity Log</h2>
+        </div>
+
         <div class="log-drawer-actions">
           <button id="clearLogBtn" class="btn-clear hidden" type="button">Clear</button>
-          <span id="logArrow" class="log-arrow">▼ Show</span>
+          <span id="logArrow" class="log-arrow">Show &#9662;</span>
         </div>
       </div>
 
@@ -117,4 +215,3 @@
   <script type="module" src="app.js"></script>
 </body>
 </html>
-      
